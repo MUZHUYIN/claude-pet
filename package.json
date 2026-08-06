@@ -1,0 +1,52 @@
+{
+  "name": "claude-pet",
+  "version": "0.1.0",
+  "description": "Claude Code CLI 桌面宠物：透明置顶像素宠物，实时显示 agent 工作状态与气泡消息",
+  "main": "out/main/index.js",
+  "private": true,
+  "author": "MUZHUYIN",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "typecheck": "tsc --noEmit --composite false -p tsconfig.node.json && tsc --noEmit --composite false -p tsconfig.web.json",
+    "build": "electron-vite build && electron-builder --win",
+    "build:dir": "electron-vite build && electron-builder --win --dir",
+    "gen:sprites": "node scripts/generate-placeholder-sprites.mjs",
+    "sim": "node scripts/simulate-events.mjs",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "hooks:uninstall": "node scripts/uninstall-hooks.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.muzhuyin.claude-pet",
+    "productName": "ClaudePet",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "out/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/pet-assets",
+        "to": "pet-assets"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  }
+}
