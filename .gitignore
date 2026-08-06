@@ -1,0 +1,13 @@
+# 依赖与构建产物
+node_modules/
+out/
+build/
+dist/
+
+# 调试产物
+dev-shots/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log
