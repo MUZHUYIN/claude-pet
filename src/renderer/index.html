@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'" />
+    <title>Claude Pet</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      }
+      /* canvas 固定贴窗口左上角：窗口尺寸被系统改动时，
+         绘制与 hit-test 坐标系不产生偏移（居中会导致偏移错位） */
+      #pet-canvas {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 320px;
+        height: 220px;
+        cursor: default;
+      }
+      /* 气泡 */
+      .bubble {
+        position: absolute;
+        bottom: 108px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: 280px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #2d2a26;
+        background: rgba(255, 252, 245, 0.95);
+        border: 2px solid #3a2e28;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 4;
+        overflow: hidden;
+        word-break: break-all;
+        animation: bubble-in 0.25s ease-out;
+        z-index: 10;
+      }
+      .bubble::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: rgba(255, 252, 245, 0.95);
+      }
+      .bubble-success {
+        border-color: #4a7c59;
+        background: rgba(240, 250, 240, 0.95);
+      }
+      .bubble-success::after {
+        border-top-color: rgba(240, 250, 240, 0.95);
+      }
+      .bubble-error {
+        border-color: #a03a3a;
+        background: rgba(252, 240, 240, 0.95);
+      }
+      .bubble-error::after {
+        border-top-color: rgba(252, 240, 240, 0.95);
+      }
+      .bubble-hide {
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      @keyframes bubble-in {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="pet-canvas"></canvas>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
