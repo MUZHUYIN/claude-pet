@@ -1,8 +1,8 @@
 {
     "sheet":  "pet.png",
     "tile":  {
-                 "w":  112,
-                 "h":  112
+                 "w":  104,
+                 "h":  104
              },
     "scale":  1.25,
     "window":  {

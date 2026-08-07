@@ -27,7 +27,7 @@ $ALPHA_THRESHOLD = 0
 # 素材帧尺寸（源）与目标 tile 尺寸（裁剪后）
 $SRC_TILE = 128
 # 逐帧裁剪：每帧四周去除 $CROP px 外围（去除素材白色框线 + 贴边内容，内容四周留干净透明边距）
-$CROP = 8
+$CROP = 12
 $TILE = $SRC_TILE - 2 * $CROP  # 112
 $COLS = 8
 $W = $TILE * $COLS        # 896
