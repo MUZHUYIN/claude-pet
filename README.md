@@ -6,11 +6,13 @@
 
 ## 功能
 
-- **状态动画**：agent 工具调用 → 奔跑/敲键盘；等待用户注意 → 停下盯着你；任务完成 → 挥手庆祝；失败 → 哭泣
-- **气泡消息**：任务完成摘要、失败原因、需要你注意的提醒（自动消失，点击关闭）
+- **状态动画**：agent 工具调用 → 打字（typing）；等待分析 → 托腮思考（thinking）；任务完成 → 开心（happy）；失败 → 哭泣（cry）；待机 → 呼吸 + 随机眨眼
+- **动画增强**：待机 5 分钟入睡（Zzz）、拖拽中行走（walk）、释放奔跑（run）、戳一下跳跃（jump）
+- **气泡消息**：任务完成摘要、失败原因、需要你注意的提醒（完成/失败气泡永久显示，点击关闭，新任务清除）
 - **显示时机**：检测到 claude 进程活跃时出现，会话结束后约 9 秒自动隐藏（应用常驻后台等待）
-- **交互**：拖拽移动（位置记忆）、戳一下会跳、右键/托盘退出
+- **交互**：拖拽移动（位置记忆）、戳一下会跳、右键菜单（切换形象/开机自启/退出）、托盘退出
 - **点击穿透**：宠物透明区域不挡桌面，桌面图标仍可正常点击
+- **开机自启**：右键菜单开关（Windows 登录自动后台运行）
 - **单实例**：多个终端开多个 claude 会话也只有一个宠物
 
 ## 架构
@@ -25,10 +27,11 @@ pet-hook.js (~/.claude/desktop-pet/，零依赖 Node，复制安装)
 %USERPROFILE%\.claude\desktop-pet\events.jsonl   ← 唯一事实源
    │ fs.watch + 轮询 (watcher)
    ▼
-主进程状态机 (working/waiting/celebrate/sad/idle + 超时降级)
+主进程状态机 (working/waiting/celebrate/sad/idle，无限保持直到切换)
    │ 进程检测 tasklist/PowerShell（只决定显示/隐藏）
    ▼
-IPC push ──► 渲染进程 (Canvas 帧动画 + DOM 气泡 + 拖拽)
+IPC push ──► 渲染进程 (Canvas 帧动画 + DOM 气泡 + 拖拽 + 行为层)
+   │              └ behaviors.ts：blink/sleep/walk/run/jump 动画增强
 ```
 
 ## 快速开始
@@ -66,29 +69,33 @@ PET_SHOT=1 npm run dev
 
 ## 更换美术资源（多形象机制）
 
-**当前形象**：`bear-v3`（自嘲熊风像素熊，定稿版）。
+**当前形象**：`bear-original`（自嘲熊原版插画风，10 动画完整素材，定稿版）。备选 `bear-v3`（程序化像素风）。
 
 **多形象机制**：
 - 形象目录：`resources/pet-assets/characters/<名字>/`（每形象含 `pet.png` + `sprites.json`）
 - 切换：右键宠物 → **切换形象**（即时生效，选择持久化到 `%APPDATA%\claude-pet\state.json`）
-- 默认形象：state.json 的 `character` 字段（缺省 `bear-v3`）
+- 默认形象：state.json 的 `character` 字段（缺省 `bear-original`）
+- **窗口尺寸由形象驱动**：sprites.json 的 `window` 字段（缺省 `h = tile.h×scale + 124`），切换时底部锚定
 
-**生成/新增形象**（代码程序化绘制，`scripts/generate-placeholder-sprites.mjs`）：
+**bear-original 素材处理**（`scripts/merge-original-sheets.ps1`，PowerShell 零依赖）：
+```bash
+npm run merge:original   # 直读素材 zip（D:\周靖\下载\自嘲熊\…）→ 合并 10 动画精灵表
+```
+- 关键处理：**逐帧四周裁剪 12px**（去除素材自带白色框线与贴边内容 — 否则渲染显示白框线条）、动画节奏 ×2.5 调慢、happy/cry 播完停末帧
+
+**代码绘制形象**（`scripts/generate-placeholder-sprites.mjs`）：
 ```bash
 npm run gen:sprites -- <形象名>   # 按 LAYOUTS 布局参数绘制并输出到 characters/<名字>/
 ```
 - 绘制是参数化的（`LAYOUTS` 表控制身体椭圆/五官位置/嘴型），加新形象只需加一组布局参数
-- 或按 codexpet 规范（9 行 × 6 列、32×32、RGBA）用 Aseprite 管线制作后放入新目录，更新 `sprites.json`
 
-**精灵表规范**：每行一个动画状态（`idle / left-run / right-run / jump / wave / fail / wait / working / pending`，对应 codexpet 9 行）；逻辑状态经 `logicalMap` 映射（`celebrate→wave`、`sad→fail`）。
+**精灵表规范**：每行一个动画状态、多列帧、RGBA（帧尺寸任意，tile 参数化）；逻辑状态经 `logicalMap` 映射（如 bear-original：`working→typing`、`waiting→thinking`、`celebrate→happy`、`sad→cry`）。
 
 **视觉回归**：`PET_SHOT=1 npm run dev` 自动截图各状态到 `dev-shots/`。
-
-渲染层通过 `logicalMap` 把逻辑状态映射到动画（`celebrate→wave`、`sad→fail`），换动画名只需改表。
 
 ## 已知限制
 
 - 全屏游戏/演示等最高层窗口可能压住宠物（每 30s 自动重设置顶层级）
-- Windows 透明窗偶发重绘闪烁（固定尺寸已缓解）
+- Windows 透明窗内容更新时可能有极淡边缘线（平台伪影，素材裁剪后已基本消除）
 - hooks 只对安装后的新会话生效
 - 事件文件 >5MB 自动轮转（保留最近一份）
