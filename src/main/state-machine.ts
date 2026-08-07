@@ -25,6 +25,8 @@ export class PetStateMachine {
   private state: PetState = 'idle'
   private lastSessionId: string | null = null
   private lastActivityTs: number | null = null
+  /** 仅 waiting 用：60 秒无新事件自动回 idle（其他状态无限保持） */
+  private idleTimer: NodeJS.Timeout | undefined
 
   constructor(private cb: StateCallbacks) {}
 
@@ -43,6 +45,9 @@ export class PetStateMachine {
       this.cb.onClearBubble()
     }
     this.lastActivityTs = ev.ts
+    // 任何新事件清除 waiting 的"回 idle"定时器
+    clearTimeout(this.idleTimer)
+    this.idleTimer = undefined
 
     switch (ev.event) {
       case 'PostToolUse':
@@ -54,6 +59,9 @@ export class PetStateMachine {
       case 'Notification':
         this.set('waiting')
         this.cb.onBubble(ev.summary || '需要你的注意', 'info', 8000)
+        // "Claude 在等你输入"（waiting for your input）显示 thinking，
+        // 但 60 秒无新事件自动回 idle（用户确认的行为）
+        this.idleTimer = setTimeout(() => this.set('idle'), 60_000)
         break
       case 'Stop':
         if (ev.error) {
@@ -73,6 +81,8 @@ export class PetStateMachine {
 
   /** 进程检测判定 claude 已消失：直接隐藏（渲染层停帧省电） */
   sessionGone(): void {
+    clearTimeout(this.idleTimer)
+    this.idleTimer = undefined
     this.lastSessionId = null
     this.set('hidden')
   }
