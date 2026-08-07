@@ -49,7 +49,7 @@ function listCharacters(): string[] {
       .filter((d) => d.isDirectory())
       .map((d) => d.name)
   } catch {
-    return ['bear-v2']
+    return ['bear-v3']
   }
 }
 

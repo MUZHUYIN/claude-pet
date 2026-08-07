@@ -66,7 +66,7 @@ PET_SHOT=1 npm run dev
 
 ## 更换美术资源（多形象机制）
 
-**当前形象**：`bear-v3`（自嘲熊风像素熊，定稿版）。`bear-v2` 作为备选保留。
+**当前形象**：`bear-v3`（自嘲熊风像素熊，定稿版）。
 
 **多形象机制**：
 - 形象目录：`resources/pet-assets/characters/<名字>/`（每形象含 `pet.png` + `sprites.json`）

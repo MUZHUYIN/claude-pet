@@ -26,21 +26,14 @@ const H = TILE * ROWS // 288
 
 // ---------- 形象布局参数（同一套绘制函数，不同形象不同比例/五官位置） ----------
 const LAYOUTS = {
-  // v2：椭圆身、五官偏上（已验收"还行"的白熊）
-  'bear-v2': {
-    bodyCx: 16, bodyCy: 17, bodyRx: 12, bodyRy: 11,
-    ear: { x: 10, y: 6, rx: 3, ry: 2.6 }, ear2: { x: 22, y: 6 },
-    eyeY: 15, eyeGap: 7, noseY: 18, mouthY: 20, legY: 28, shadowY: 25
-  },
-  // v3：正圆球身、小嘴、五官位置高（脸 1/3 处，避免"俯视/低头"感）
-  // 鼻子用 2x2 方块点（与嘴的横线区分，避免"=号"感），嘴与鼻间距拉开
+  // bear-v3（定稿）：正圆球身、小嘴、五官位置高（脸 1/3 处，避免"俯视/低头"感）
   'bear-v3': {
     bodyCx: 16, bodyCy: 16, bodyRx: 12, bodyRy: 12,
     ear: { x: 10, y: 5, rx: 2.6, ry: 2.4 }, ear2: { x: 22, y: 5 },
     eyeY: 14, eyeGap: 8, noseY: 18, mouthY: 22, legY: 28, shadowY: 24
   }
 }
-const L = LAYOUTS[CHARACTER] || LAYOUTS['bear-v2']
+const L = LAYOUTS[CHARACTER] || LAYOUTS['bear-v3']
 
 // ---------- 颜色（自嘲熊真实特征：纯白主体 + 黑色粗描边线条画，无腮红） ----------
 const C = {
