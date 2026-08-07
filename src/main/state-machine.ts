@@ -56,13 +56,18 @@ export class PetStateMachine {
         this.cb.onClearBubble()
         this.set('working')
         break
-      case 'Notification':
+      case 'Notification': {
         this.set('waiting')
         this.cb.onBubble(ev.summary || '需要你的注意', 'info', 8000)
-        // "Claude 在等你输入"（waiting for your input）显示 thinking，
-        // 但 60 秒无新事件自动回 idle（用户确认的行为）
-        this.idleTimer = setTimeout(() => this.set('idle'), 60_000)
+        // 区分两种等待：
+        //   "waiting for your input"（普通等待输入）→ thinking 60 秒后回 idle
+        //   其他（"needs your permission" 等权限/决策等待）→ 一直 thinking 等用户选择
+        const summary = ev.summary || ''
+        if (summary.includes('waiting for your input')) {
+          this.idleTimer = setTimeout(() => this.set('idle'), 60_000)
+        }
         break
+      }
       case 'Stop':
         if (ev.error) {
           this.set('sad')
