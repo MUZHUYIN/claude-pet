@@ -34,21 +34,20 @@ function charactersBase(): string {
 }
 
 /** 读形象的期望窗口尺寸与宠物显示尺寸（sprites.json 的 window 字段；缺省 h = tile.h*scale + 124、w = 320） */
-function loadCharacterSize(name: string): { w: number; h: number; petW: number; petH: number } {
+function loadCharacterSize(name: string): { w: number; h: number } {
   try {
     const def = JSON.parse(readFileSync(join(charactersBase(), name, 'sprites.json'), 'utf8')) as {
-      tile?: { w?: number; h?: number }
+      tile?: { h?: number }
       scale?: number
       window?: { w?: number; h?: number }
     }
-    const tileW = def.tile?.w ?? 32
     const tileH = def.tile?.h ?? 32
     const scale = def.scale ?? 3
     const w = def.window?.w ?? 320
     const h = def.window?.h ?? Math.round(tileH * scale) + 124
-    return { w, h, petW: Math.round(tileW * scale), petH: Math.round(tileH * scale) }
+    return { w, h }
   } catch {
-    return { w: 320, h: 220, petW: 96, petH: 96 }
+    return { w: 320, h: 220 }
   }
 }
 
@@ -172,29 +171,6 @@ function forceWindowSize(win: BrowserWindow, force = false): void {
   const [w, h] = win.getSize()
   if (force || w !== expectedSize.w || h !== expectedSize.h) {
     win.setBounds({ width: expectedSize.w, height: expectedSize.h })
-    applyWindowShape(win)
-  }
-}
-
-/**
- * 窗口形状裁剪（Windows SetWindowRgn 等价）：形状只保留"气泡带 + 宠物带"内容区域，
- * 窗口矩形边缘（DWM 合成伪影白框的所在位置）被整体裁掉。
- * SetWindowRgn 的形状边界不绘制轮廓线，不会产生新的伪影。
- */
-function applyWindowShape(win: BrowserWindow): void {
-  try {
-    const size = loadCharacterSize(activeCharacter())
-    const margin = 6
-    const petX = Math.round((size.w - size.petW) / 2)
-    const petY = size.h - size.petH
-    // 气泡带：顶部区域（气泡 bottom = petH + 12，其可用高 ≈ petY - 12）
-    const bubbleH = Math.max(petY - 12, 0)
-    win.setShape([
-      { x: margin, y: 0, width: size.w - margin * 2, height: bubbleH },
-      { x: petX - margin, y: petY - margin, width: size.petW + margin * 2, height: size.petH + margin * 2 }
-    ])
-  } catch {
-    /* 形状设置失败不影响运行 */
   }
 }
 
@@ -393,7 +369,6 @@ function setupIpc(): void {
             const [, ch] = win.getSize()
             expectedSize = size
             win.setBounds({ x, y: y + (ch - size.h), width: size.w, height: size.h })
-            applyWindowShape(win)
             clampToWorkArea(win)
             win.webContents.reload() // 重新加载渲染层（preload 会重新读 assetRoot）
           }
@@ -460,7 +435,6 @@ export function createPetWindow(): BrowserWindow {
   petWindow = win
   // 显式透明背景：缓解 Windows 透明窗白框/矩形轮廓闪现
   win.setBackgroundColor('#00000000')
-  win.once('ready-to-show', () => applyWindowShape(win))
   win.setAlwaysOnTop(true, 'screen-saver')
   // 置顶加固：全屏应用/其他置顶窗可能抢层
   setInterval(() => {
