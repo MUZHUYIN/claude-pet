@@ -59,6 +59,7 @@ IPC 'pet:event' 推送 ──► 渲染进程（Canvas 帧动画 + DOM 气泡 + 
 - 切换：右键宠物 → 切换形象（写入 `%APPDATA%\claude-pet\state.json` 的 `character` 字段 + reload）
 - **窗口尺寸由形象驱动**：sprites.json 的 `window` 字段（缺省 `h = tile.h×scale + 124`）；切换时底部锚定 setBounds（宠物脚底不跳动）
 - **bear-original**（当前定稿形象）：`scripts/merge-original-sheets.ps1` 合并素材 zip（PowerShell 零依赖，zip 直读）；代码绘制形象用 `generate-placeholder-sprites.mjs` 的 `LAYOUTS` 参数表
+- **开机自启**：右键宠物 → 开机自启（checkbox）。portable 版必须用 `PORTABLE_EXECUTABLE_FILE`（启动器真实路径，execPath 是临时解压路径重启失效），勾选状态检查也要传 path
 
 ## Windows 特有坑（已踩过，勿重犯）
 
