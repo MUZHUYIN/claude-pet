@@ -43,7 +43,8 @@
       "target": [
         "portable",
         "nsis"
-      ]
+      ],
+      "icon": "resources/icon/icon.ico"
     },
     "nsis": {
       "oneClick": true,
