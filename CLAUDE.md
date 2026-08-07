@@ -13,6 +13,7 @@ npm run dev                 # 开发模式（electron-vite，main 改动需重�
 npm run typecheck           # 类型检查（main/preload + renderer 两侧）
 npm run gen:sprites -- <名字>  # 生成像素形象到 resources/pet-assets/characters/<名字>/
 npm run merge:original      # 合并自嘲熊素材包 zip → bear-original 精灵表（PowerShell，零依赖）
+node scripts/fill-holes.mjs # 合并后必跑：填充硬化产生的内部透明洞（跳过会复发"水渍灰"）
 npm run sim -- working|waiting|celebrate|sad|prompt|stop-error  # 注入模拟事件（不跑真实 claude）
 npm run hooks:install       # 安装 hooks 到 ~/.claude/settings.json（幂等，自动备份 .bak）
 npm run hooks:uninstall     # 对称移除
@@ -44,12 +45,14 @@ IPC 'pet:event' 推送 ──► 渲染进程（Canvas 帧动画 + DOM 气泡 + 
 
 ## 状态机与动画
 
-- 逻辑状态 `hidden | idle | working | waiting | celebrate | sad`，**无限保持直到切换**（无超时定时器）：
-  - PostToolUse/UserPromptSubmit → working（并清掉旧结果气泡）
-  - Notification → waiting + 气泡 8s；Stop 成功 → celebrate + **永久气泡**；Stop 失败 → sad + **永久气泡**（ttl≤0 = 永久，新任务开始时清除，点击可关闭）
+- 逻辑状态 `hidden | idle | working | waiting | celebrate | sad`；**两条时间链自动流转**（其余无限保持直到切换）：
+  - **展示保持时间链**（成功/失败对称）：Stop → celebrate（happy 循环）或 sad（cry 循环）+ **永久气泡** → 60s 后自动转 waiting（thinking）→ 再 60s 无输入回 idle。celebrate/sad 期间收到普通等待通知不打断 happy/cry（展示保持保护：按剩余时间重建时间链，保证展示满 60s）
+  - **等待时间链**：Notification 区分类型——summary 含 `waiting for your input`（普通等待输入）→ thinking 60s 后回 idle；权限/决策等待（`needs your permission` 等）→ 一直保持 thinking 等用户选择（并清掉时间链残留定时器）
+  - PostToolUse/UserPromptSubmit → working（并清掉旧结果气泡）（ttl≤0 = 永久，新任务开始时清除，点击可关闭）
   - 进程消失（连续 3 轮 ≈9s）→ hidden；进程活跃 → idle
+  - 定时器：`state-machine.ts` 的 `idleTimer`（waiting 回 idle + celebrate 转 waiting 共用），任何新事件/`sessionGone` 都会 clearTimeout
 - **行为层 `src/renderer/behaviors.ts`**：逻辑状态之外的动画增强——idle 随机 blink（5-15s）、idle 5 分钟 sleep、拖拽中 walk、拖拽释放 run 1.5s、戳一下 jump。全部经 `pet.hasAnimation()` 守卫（形象缺动画时自动降级）
-- 精灵动画经 `logicalMap` 映射（如 bear-original：working→typing、waiting→thinking、celebrate→happy、sad→cry）
+- 精灵动画经 `logicalMap` 映射（如 bear-original：working→typing、waiting→thinking、celebrate→happy、sad→cry）；**happy/cry 循环播放**（完成态持续开心/哭泣），仅 blink/jump 是 `loop=false` + `followUp=idle`（播完回 idle）
 - **帧对齐**：渲染层预计算每帧内容 bbox（`computeFrameOffsets`），绘制时水平居中 + 脚底对齐（消除素材帧间大小跳变）
 - 精灵表格式对齐 codexpet 社区规范：每行一个动画状态、多列帧、RGBA（帧尺寸任意，tile 参数化）
 
@@ -74,7 +77,7 @@ IPC 'pet:event' 推送 ──► 渲染进程（Canvas 帧动画 + DOM 气泡 + 
 - **PowerShell 变量名大小写不敏感**：`$frames` 赋值会覆盖 `$FRAMES`（hashtable）→ 变量名必须区分大小写不冲突
 - **素材自带白色框线/贴边内容**：第三方素材帧可能有白色矩形框线（裁剪残留，与主体分离）和贴边元素（键盘/地面）——**必须逐帧裁剪**（bear-original 裁 12px）否则渲染后显示白框线条（与窗口伪影区分：素材白线是"部分帧、边数不定、硬化变粗"）
 - **Electron 透明窗白框伪影**：WS_EX_LAYERED 窗口内容更新时的边缘伪影是平台级问题，setShape/thickFrame/GPU 开关均无效（GPU 开关还会导致完全不渲染）——先排查素材层（白线/贴边）再归因平台
-- **透明窗半透明像素与桌面混合**（已知限制，未解决）：插画风素材的阴影/渐变是半透明像素，layered window 上直接与桌面混合 → 身体内部出现"水渍"灰（隐约见桌面）；宠物背后有大而浅的方块阴影（白色背景可见）。alpha 硬化可消除但会破坏插画风边缘（锯齿）
+- **透明窗半透明像素与桌面混合**（"水渍"灰，已缓解、残留轻微）：插画风素材的阴影/渐变是半透明像素，layered window 上直接与桌面混合 → 身体内部出现"水渍"灰。缓解组合拳：灰色半透明硬化（merge 脚本）→ 洞填充（fill-holes.mjs，必跑）→ **scale 1.0 无插值绘制**（改 scale 或跳过填洞会复发）。宠物背后大方块阴影已解决（canvas 无暗色残留填充）；alpha 硬化可进一步消除但会破坏插画风边缘（锯齿）
 
 ## hooks 集成安全约束
 

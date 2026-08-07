@@ -27,7 +27,7 @@ pet-hook.js (~/.claude/desktop-pet/，零依赖 Node，复制安装)
 %USERPROFILE%\.claude\desktop-pet\events.jsonl   ← 唯一事实源
    │ fs.watch + 轮询 (watcher)
    ▼
-主进程状态机 (working/waiting/celebrate/sad/idle，无限保持直到切换)
+主进程状态机 (working/waiting/celebrate/sad/idle；Stop 展示保持 happy/cry 60s → thinking 60s → idle，普通等待 60s 回 idle，权限等待无限保持)
    │ 进程检测 tasklist/PowerShell（只决定显示/隐藏）
    ▼
 IPC push ──► 渲染进程 (Canvas 帧动画 + DOM 气泡 + 拖拽 + 行为层)
