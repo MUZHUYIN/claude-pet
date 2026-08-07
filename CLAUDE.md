@@ -12,6 +12,7 @@ Claude Code CLI 桌面宠物：透明置顶悬浮像素宠物，实时反映终�
 npm run dev                 # 开发模式（electron-vite，main 改动需重启）
 npm run typecheck           # 类型检查（main/preload + renderer 两侧）
 npm run gen:sprites -- <名字>  # 生成像素形象到 resources/pet-assets/characters/<名字>/
+npm run merge:original      # 合并自嘲熊素材包 zip → bear-original 精灵表（PowerShell，零依赖）
 npm run sim -- working|waiting|celebrate|sad|prompt|stop-error  # 注入模拟事件（不跑真实 claude）
 npm run hooks:install       # 安装 hooks 到 ~/.claude/settings.json（幂等，自动备份 .bak）
 npm run hooks:uninstall     # 对称移除
@@ -47,15 +48,17 @@ IPC 'pet:event' 推送 ──► 渲染进程（Canvas 帧动画 + DOM 气泡 + 
   - PostToolUse/UserPromptSubmit → working（并清掉旧结果气泡）
   - Notification → waiting + 气泡 8s；Stop 成功 → celebrate + **永久气泡**；Stop 失败 → sad + **永久气泡**（ttl≤0 = 永久，新任务开始时清除，点击可关闭）
   - 进程消失（连续 3 轮 ≈9s）→ hidden；进程活跃 → idle
-- 精灵动画经 `logicalMap` 映射（celebrate→wave、sad→fail）；逻辑状态实际只用到 6 个动画（idle/working/wait/wave/fail/jump），left-run/right-run/pending 暂为占位
-- 精灵表格式对齐 codexpet 社区规范：每行一个动画状态、多列帧、32×32、RGBA
+- **行为层 `src/renderer/behaviors.ts`**：逻辑状态之外的动画增强——idle 随机 blink（5-15s）、idle 5 分钟 sleep、拖拽中 walk、拖拽释放 run 1.5s、戳一下 jump。全部经 `pet.hasAnimation()` 守卫（形象缺动画时自动降级）
+- 精灵动画经 `logicalMap` 映射（如 bear-original：working→typing、waiting→thinking、celebrate→happy、sad→cry）
+- **帧对齐**：渲染层预计算每帧内容 bbox（`computeFrameOffsets`），绘制时水平居中 + 脚底对齐（消除素材帧间大小跳变）
+- 精灵表格式对齐 codexpet 社区规范：每行一个动画状态、多列帧、RGBA（帧尺寸任意，tile 参数化）
 
 ## 多形象机制
 
 - 形象目录 `resources/pet-assets/characters/<名字>/`（pet.png + sprites.json），extraResources 打包
 - 切换：右键宠物 → 切换形象（写入 `%APPDATA%\claude-pet\state.json` 的 `character` 字段 + reload）
-- 代码绘制形象：`scripts/generate-placeholder-sprites.mjs` 用 `LAYOUTS` 参数表（身体椭圆/五官位置/嘴型）参数化绘制，加新形象只需加一组布局参数 + 零依赖 PNG 编码器
-- 用 Aseprite 管线制作的素材也可放入新目录（格式兼容即零改动）
+- **窗口尺寸由形象驱动**：sprites.json 的 `window` 字段（缺省 `h = tile.h×scale + 124`）；切换时底部锚定 setBounds（宠物脚底不跳动）
+- **bear-original**（当前定稿形象）：`scripts/merge-original-sheets.ps1` 合并素材 zip（PowerShell 零依赖，zip 直读）；代码绘制形象用 `generate-placeholder-sprites.mjs` 的 `LAYOUTS` 参数表
 
 ## Windows 特有坑（已踩过，勿重犯）
 
@@ -66,6 +69,10 @@ IPC 'pet:event' 推送 ──► 渲染进程（Canvas 帧动画 + DOM 气泡 + 
 - **浮点坐标丢失**：`grid[y][12.5]` 写入非整数下标，整数读取时消失 → `px()` 必须 `Math.round`
 - **state.json 被覆盖**：保存位置必须合并写入（`{...prev, x, y}`），否则 `character` 字段丢失
 - **中文路径**：hook 脚本复制到 `%USERPROFILE%\.claude\desktop-pet\`（ASCII），不引用含中文的项目路径
+- **PowerShell 脚本 BOM**：PS 5.1 按 GBK 读无 BOM 脚本 → 中文乱码/解析错误 → `.ps1` 必须 UTF-8 BOM（Write 后检查文件头 ef bb bf）
+- **PowerShell 变量名大小写不敏感**：`$frames` 赋值会覆盖 `$FRAMES`（hashtable）→ 变量名必须区分大小写不冲突
+- **素材自带白色框线/贴边内容**：第三方素材帧可能有白色矩形框线（裁剪残留，与主体分离）和贴边元素（键盘/地面）——**必须逐帧裁剪**（bear-original 裁 12px）否则渲染后显示白框线条（与窗口伪影区分：素材白线是"部分帧、边数不定、硬化变粗"）
+- **Electron 透明窗白框伪影**：WS_EX_LAYERED 窗口内容更新时的边缘伪影是平台级问题，setShape/thickFrame/GPU 开关均无效（GPU 开关还会导致完全不渲染）——先排查素材层（白线/贴边）再归因平台
 
 ## hooks 集成安全约束
 
