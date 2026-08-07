@@ -335,7 +335,6 @@ function setupIpc(): void {
     const win = BrowserWindow.fromWebContents(e.sender)
     if (!win) return
     Menu.buildFromTemplate([
-      { label: '显示宠物', click: () => win.show() },
       {
         label: '切换形象',
         submenu: listCharacters().map((name) => ({
@@ -347,6 +346,34 @@ function setupIpc(): void {
             win.webContents.reload() // 重新加载渲染层（preload 会重新读 assetRoot）
           }
         }))
+      },
+      { type: 'separator' },
+      {
+        label: '开机自启',
+        type: 'checkbox' as const,
+        // portable 版的 process.execPath 指向临时解压目录（重启后失效），
+        // 必须用 PORTABLE_EXECUTABLE_FILE（启动器真实路径）；检查也须传 path，
+        // 否则默认查临时路径永远返回未勾选
+        checked: (() => {
+          const launchPath = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath
+          return app.getLoginItemSettings({ path: launchPath }).openAtLogin
+        })(),
+        click: (item) => {
+          const launchPath = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath
+          app.setLoginItemSettings({ openAtLogin: item.checked, path: launchPath })
+          diag(`开机自启 ${item.checked ? '开启' : '关闭'} → ${launchPath}`)
+          // 反馈气泡（菜单点击后立即关闭，用户看不到勾选状态）
+          if (!win.isDestroyed()) {
+            win.webContents.send('pet:event', {
+              type: 'bubble',
+              payload: {
+                text: item.checked ? '开机自启已开启 ✓' : '开机自启已关闭',
+                kind: item.checked ? 'success' : 'info',
+                ttlMs: 3000
+              }
+            })
+          }
+        }
       },
       { type: 'separator' },
       { label: '退出宠物', click: () => app.quit() }
