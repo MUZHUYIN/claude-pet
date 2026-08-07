@@ -26,12 +26,17 @@ $ALPHA_THRESHOLD = 0
 
 # 素材帧尺寸（源）与目标 tile 尺寸（裁剪后）
 $SRC_TILE = 128
-# 逐帧裁剪：每帧四周去除 $CROP px 外围（去除素材白色框线 + 贴边内容，内容四周留干净透明边距）
-$CROP = 12
-$TILE = $SRC_TILE - 2 * $CROP  # 112
+# # 均匀裁剪 12px（白框完全消失的定稿版；键盘左缘小块损失经用户评估可接受）
+# 右/上/下 12px（框线外缘/阴影残余在 8-12px 区域）。去除素材白框线且不伤主体。
+$CROP_LEFT = 12
+$CROP_RIGHT = 12
+$CROP_TOP = 12
+$CROP_BOTTOM = 12
+$TILE_W = $SRC_TILE - $CROP_LEFT - $CROP_RIGHT  # 107
+$TILE_H = $SRC_TILE - $CROP_TOP - $CROP_BOTTOM  # 104
 $COLS = 8
-$W = $TILE * $COLS        # 896
-$H = $TILE * $ANIMS.Count # 1120
+$W = $TILE_W * $COLS        # 896
+$H = $TILE_H * $ANIMS.Count # 1120
 
 # 输出目录: 项目 resources/pet-assets/characters/<OutName>/
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -74,12 +79,12 @@ try {
       }
       # 逐帧裁剪绘制：src 取内容区（四周裁 $CROP），dest 按新 tile 排列
       for ($f = 0; $f -lt $FRAMES[$name]; $f++) {
-        $src = [System.Drawing.Rectangle]::new($f * $SRC_TILE + $CROP, $CROP, $TILE, $TILE)
-        $dest = [System.Drawing.Rectangle]::new($f * $TILE, $i * $TILE, $TILE, $TILE)
+        $src = [System.Drawing.Rectangle]::new($f * $SRC_TILE + $CROP_LEFT, $CROP_TOP, $TILE_W, $TILE_H)
+        $dest = [System.Drawing.Rectangle]::new($f * $TILE_W, $i * $TILE_H, $TILE_W, $TILE_H)
         # 显式 Rectangle + Pixel 单位，防 DPI 元数据缩放伪影
         $g.DrawImage($bmp, $dest, $src, [System.Drawing.GraphicsUnit]::Pixel)
       }
-      Write-Host "  ✓ $name ($($FRAMES[$name]) 帧, 裁 $CROP px)"
+      Write-Host "  ✓ $name ($($FRAMES[$name]) 帧, 非对称裁剪)"
     }
     finally { $bmp.Dispose() }
   }
@@ -110,11 +115,11 @@ $cleared = 0
 for ($row = 0; $row -lt $ANIMS.Count; $row++) {
   $n = $FRAMES[$ANIMS[$row]]
   for ($col = 0; $col -lt $n; $col++) {
-    $fx = $col * $TILE
-    $fy = $row * $TILE
-    for ($y = 0; $y -lt $TILE; $y++) {
-      for ($x = 0; $x -lt $TILE; $x++) {
-        $inEdge = ($x -lt 9) -or ($x -ge ($TILE - 9)) -or ($y -lt 9) -or ($y -ge ($TILE - 9))
+    $fx = $col * $TILE_W
+    $fy = $row * $TILE_H
+    for ($y = 0; $y -lt $TILE_H; $y++) {
+      for ($x = 0; $x -lt $TILE_W; $x++) {
+        $inEdge = ($x -lt 9) -or ($x -ge ($TILE_W - 9)) -or ($y -lt 9) -or ($y -ge ($TILE_H - 9))
         if (-not $inEdge) { continue }
         $c = $target.GetPixel($fx + $x, $fy + $y)
         if ($c.A -gt 0 -and $c.R -gt 230 -and $c.G -gt 230 -and $c.B -gt 230) {
@@ -153,7 +158,7 @@ for ($i = 0; $i -lt $ANIMS.Count; $i++) {
 
 $config = [ordered]@{
   sheet = 'pet.png'
-  tile = [ordered]@{ w = $TILE; h = $TILE }
+  tile = [ordered]@{ w = $TILE_W; h = $TILE_H }
   scale = 1.25
   window = [ordered]@{ w = 320; h = 280 }
   animations = $animations
