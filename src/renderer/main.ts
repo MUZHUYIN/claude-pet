@@ -104,6 +104,7 @@ async function boot(): Promise<void> {
       // 导致绘制与 hit-test 坐标系不一致（宠物点不到）
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, winW, winH)
+      pet.update(nowMs) // 推进非循环动画的 followUp 回切（blink/jump 播完回 idle）
       pet.draw(ctx, nowMs, PET_X, PET_Y, petW, petH)
     }
     requestAnimationFrame(frame)
