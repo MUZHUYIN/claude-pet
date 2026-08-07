@@ -12,26 +12,30 @@
         width: 100%;
         height: 100%;
         background: transparent;
+        /* 圆角窗口：缓解 Windows 透明窗矩形轮廓/白框闪现的 DWM 伪影 */
+        border-radius: 60px;
         overflow: hidden;
         user-select: none;
         -webkit-user-select: none;
         font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
       }
-      /* canvas 固定贴窗口左上角：窗口尺寸被系统改动时，
+      /* canvas 贴窗口左上角铺满：窗口尺寸被系统改动时，
          绘制与 hit-test 坐标系不产生偏移（居中会导致偏移错位） */
       #pet-canvas {
         display: block;
         position: absolute;
         top: 0;
         left: 0;
-        width: 320px;
-        height: 220px;
+        width: 100%;
+        height: 100%;
         cursor: default;
+        /* 实验：alpha=1 的极淡底色让窗口不再是"全透明"，
+           DWM 对 layered window 走不同合成路径（消除内容更新轮廓伪影） */
+        background: rgba(0, 0, 0, 0.01);
       }
-      /* 气泡 */
+      /* 气泡（bottom 由脚本按形象动态设置） */
       .bubble {
         position: absolute;
-        bottom: 108px;
         left: 50%;
         transform: translateX(-50%);
         max-width: 280px;

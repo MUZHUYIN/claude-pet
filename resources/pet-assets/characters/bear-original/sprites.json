@@ -1,0 +1,159 @@
+{
+    "sheet":  "pet.png",
+    "tile":  {
+                 "w":  112,
+                 "h":  112
+             },
+    "scale":  1.25,
+    "window":  {
+                   "w":  320,
+                   "h":  280
+               },
+    "animations":  {
+                       "idle":  {
+                                    "row":  0,
+                                    "frames":  [
+                                                   0,
+                                                   1,
+                                                   2,
+                                                   3,
+                                                   4,
+                                                   5,
+                                                   6,
+                                                   7
+                                               ],
+                                    "frameMs":  312,
+                                    "loop":  true
+                                },
+                       "blink":  {
+                                     "row":  1,
+                                     "frames":  [
+                                                    0,
+                                                    1,
+                                                    2,
+                                                    3
+                                                ],
+                                     "frameMs":  625,
+                                     "loop":  false,
+                                     "followUp":  "idle"
+                                 },
+                       "walk":  {
+                                    "row":  2,
+                                    "frames":  [
+                                                   0,
+                                                   1,
+                                                   2,
+                                                   3,
+                                                   4,
+                                                   5,
+                                                   6,
+                                                   7
+                                               ],
+                                    "frameMs":  250,
+                                    "loop":  true
+                                },
+                       "run":  {
+                                   "row":  3,
+                                   "frames":  [
+                                                  0,
+                                                  1,
+                                                  2,
+                                                  3,
+                                                  4,
+                                                  5,
+                                                  6,
+                                                  7
+                                              ],
+                                   "frameMs":  156,
+                                   "loop":  true
+                               },
+                       "jump":  {
+                                    "row":  4,
+                                    "frames":  [
+                                                   0,
+                                                   1,
+                                                   2,
+                                                   3,
+                                                   4,
+                                                   5
+                                               ],
+                                    "frameMs":  208,
+                                    "loop":  false,
+                                    "followUp":  "idle"
+                                },
+                       "sleep":  {
+                                     "row":  5,
+                                     "frames":  [
+                                                    0,
+                                                    1,
+                                                    2,
+                                                    3,
+                                                    4,
+                                                    5
+                                                ],
+                                     "frameMs":  625,
+                                     "loop":  true
+                                 },
+                       "typing":  {
+                                      "row":  6,
+                                      "frames":  [
+                                                     0,
+                                                     1,
+                                                     2,
+                                                     3,
+                                                     4,
+                                                     5,
+                                                     6,
+                                                     7
+                                                 ],
+                                      "frameMs":  208,
+                                      "loop":  true
+                                  },
+                       "thinking":  {
+                                        "row":  7,
+                                        "frames":  [
+                                                       0,
+                                                       1,
+                                                       2,
+                                                       3,
+                                                       4,
+                                                       5
+                                                   ],
+                                        "frameMs":  417,
+                                        "loop":  true
+                                    },
+                       "happy":  {
+                                     "row":  8,
+                                     "frames":  [
+                                                    0,
+                                                    1,
+                                                    2,
+                                                    3,
+                                                    4,
+                                                    5
+                                                ],
+                                     "frameMs":  250,
+                                     "loop":  false
+                                 },
+                       "cry":  {
+                                   "row":  9,
+                                   "frames":  [
+                                                  0,
+                                                  1,
+                                                  2,
+                                                  3,
+                                                  4,
+                                                  5
+                                              ],
+                                   "frameMs":  312,
+                                   "loop":  false
+                               }
+                   },
+    "logicalMap":  {
+                       "idle":  "idle",
+                       "working":  "typing",
+                       "waiting":  "thinking",
+                       "celebrate":  "happy",
+                       "sad":  "cry"
+                   }
+}

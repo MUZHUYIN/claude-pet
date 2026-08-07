@@ -9,13 +9,18 @@ export class Bubble {
   private el: HTMLDivElement | null = null
   private timer: number | undefined
 
-  constructor(private container: HTMLElement) {}
+  constructor(
+    private container: HTMLElement,
+    /** 气泡底部与窗口底边的距离（= 宠物高度 + 间距），按形象动态传入 */
+    private bottomPx = 108
+  ) {}
 
   show(text: string, kind: BubbleKind, ttlMs = 8000): void {
     this.clear()
     const el = document.createElement('div')
     el.className = `bubble bubble-${kind}`
     el.textContent = text
+    el.style.bottom = `${this.bottomPx}px`
     el.addEventListener('click', () => this.clear())
     this.container.appendChild(el)
     this.el = el

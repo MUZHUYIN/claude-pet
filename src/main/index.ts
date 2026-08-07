@@ -9,6 +9,10 @@ import { PetStateMachine } from './state-machine'
 import { ProcessWatcher } from './process-watch'
 import { clearBubble, pushBubble, pushState } from './ipc'
 
+// Electron 官方文档推荐的 Windows 透明窗开关：
+// 调整透明窗口的 DWM 合成路径，缓解边缘伪影/更新闪烁
+app.commandLine.appendSwitch('enable-transparent-visuals')
+
 /** 主进程全局异常捕获：写诊断日志，不弹 JS 错误对话框 */
 function diag(msg: string): void {
   try {

@@ -1,20 +1,13 @@
 import { PetSprite } from './pet'
 import { Bubble } from './bubble'
 import { setupDrag } from './drag'
+import { PetBehaviors } from './behaviors'
 import type { HitTestResult, PetState } from '../shared/types'
 
 /**
  * 渲染进程入口：Canvas 动画循环 + 状态订阅 + 拖拽 + 穿透 hit-test。
+ * 尺寸全部从精灵表定义（tile × scale）与窗口实际尺寸推导，支持不同帧尺寸的形象。
  */
-
-const WINDOW_W = 320
-const WINDOW_H = 220
-const PET_SCALE = 3 // 与 sprites.json 的 scale 一致
-const PET_W = 32 * PET_SCALE
-const PET_H = 32 * PET_SCALE
-// 宠物脚踩底边、水平居中；上方留给气泡
-const PET_X = (WINDOW_W - PET_W) / 2
-const PET_Y = WINDOW_H - PET_H
 
 function hitTest(canvas: HTMLCanvasElement, bubble: Bubble, x: number, y: number): boolean {
   if (bubble.hit(x, y)) return true
@@ -42,15 +35,25 @@ async function boot(): Promise<void> {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  const dpr = window.devicePixelRatio || 1
-  canvas.width = WINDOW_W * dpr
-  canvas.height = WINDOW_H * dpr
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0) // CSS 像素坐标系
-
   console.log('[pet:renderer] boot: loading sprites')
   const pet = await PetSprite.load()
   console.log(`[pet:renderer] sprites loaded, anim=${pet.animName}`)
-  const bubble = new Bubble(document.body)
+
+  // 尺寸推导：宠物 = tile × scale（如 128×1.25=160px），窗口由主进程按形象开好
+  const def = pet.definition
+  const petW = def.tile.w * def.scale
+  const petH = def.tile.h * def.scale
+  const winW = window.innerWidth
+  const winH = window.innerHeight
+  const PET_X = (winW - petW) / 2 // 水平居中
+  // 底部留 18px 边距：内容不贴窗口/视口底边（贴边时 DWM 边缘合成触发白框伪影）
+  const PET_Y = winH - petH - 18
+  const bubble = new Bubble(document.body, petH + 12 + 18) // 气泡悬于头顶（含底部边距）
+  const behaviors = new PetBehaviors(pet)
+
+  const dpr = window.devicePixelRatio || 1
+  canvas.width = winW * dpr
+  canvas.height = winH * dpr
 
   let animating = true
 
@@ -58,13 +61,12 @@ async function boot(): Promise<void> {
     switch (evt.type) {
       case 'state': {
         const s = evt.payload as { state: PetState }
-        pet.setLogicalState(s.state)
+        behaviors.onState(s.state)
         animating = s.state !== 'hidden'
         break
       }
       case 'bubble': {
         const b = evt.payload as { text: string; kind: 'info' | 'success' | 'error'; ttlMs?: number }
-        console.log(`[pet:renderer] bubble received: ${b.kind} ${b.text.slice(0, 20)}`)
         bubble.show(b.text, b.kind, b.ttlMs)
         break
       }
@@ -87,15 +89,22 @@ async function boot(): Promise<void> {
     }
   })
 
-  setupDrag(canvas, () => pet.play('jump'))
+  setupDrag(
+    canvas,
+    () => behaviors.onDragStart(),
+    () => behaviors.onDragEnd(),
+    () => behaviors.onPoke()
+  )
 
+  // 全量重绘：layered window 的"局部区域更新"会触发 DWM 全窗重合成并闪现窗口轮廓
+  //（白框伪影）——v3 时代全量重绘无白框，帧缓存局部重绘反而引入；恢复全量
   const frame = (nowMs: number): void => {
     if (animating) {
       // 每帧强制坐标系：canvas 变换状态可能在窗口被系统改动时丢失，
       // 导致绘制与 hit-test 坐标系不一致（宠物点不到）
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, WINDOW_W, WINDOW_H)
-      pet.draw(ctx, nowMs, PET_X, PET_Y, PET_W, PET_H)
+      ctx.clearRect(0, 0, winW, winH)
+      pet.draw(ctx, nowMs, PET_X, PET_Y, petW, petH)
     }
     requestAnimationFrame(frame)
   }

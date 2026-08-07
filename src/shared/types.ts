@@ -78,6 +78,8 @@ export interface SpriteSheetDef {
   sheet: string
   tile: { w: number; h: number }
   scale: number
+  /** 形象对应的窗口尺寸（缺省 h = tile.h*scale + 124，w = 320） */
+  window?: { w?: number; h?: number }
   animations: Record<string, AnimationDef>
   /** 逻辑状态（PetState）→ 精灵动画名 */
   logicalMap: Record<string, string>

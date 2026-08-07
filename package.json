@@ -11,6 +11,7 @@
     "build": "electron-vite build && electron-builder --win",
     "build:dir": "electron-vite build && electron-builder --win --dir",
     "gen:sprites": "node scripts/generate-placeholder-sprites.mjs",
+    "merge:original": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/merge-original-sheets.ps1",
     "sim": "node scripts/simulate-events.mjs",
     "hooks:install": "node scripts/install-hooks.mjs",
     "hooks:uninstall": "node scripts/uninstall-hooks.mjs"
