@@ -132,6 +132,24 @@ for ($row = 0; $row -lt $ANIMS.Count; $row++) {
 }
 Write-Host "  清除像素数: $cleared"
 
+# 灰色半透明硬化：插画风阴影/渐变是半透明灰（"水渍灰"根源——layered window 上
+# 半透明像素直接与桌面混合）。只处理灰色像素（r≈g≈b 差异 <20）且 alpha 0-254
+# → 二值化（>=128 → 255，<128 → 0）；彩色边缘羽化（插画风轮廓）不处理，保持平滑。
+Write-Host "  灰色半透明硬化 ..."
+$hardened = 0
+for ($y = 0; $y -lt $H; $y++) {
+  for ($x = 0; $x -lt $W; $x++) {
+    $c = $target.GetPixel($x, $y)
+    if ($c.A -eq 0 -or $c.A -eq 255) { continue }
+    $isGray = ([math]::Abs($c.R - $c.G) -lt 20) -and ([math]::Abs($c.G - $c.B) -lt 20)
+    if (-not $isGray) { continue }
+    $a = if ($c.A -ge 128) { 255 } else { 0 }
+    $target.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($a, $c.R, $c.G, $c.B))
+    $hardened++
+  }
+}
+Write-Host "  硬化像素数: $hardened"
+
 $pngPath = Join-Path $outDir 'pet.png'
 $target.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
 $target.Dispose()
