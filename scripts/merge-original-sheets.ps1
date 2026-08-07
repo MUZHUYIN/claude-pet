@@ -177,7 +177,7 @@ for ($i = 0; $i -lt $ANIMS.Count; $i++) {
 $config = [ordered]@{
   sheet = 'pet.png'
   tile = [ordered]@{ w = $TILE_W; h = $TILE_H }
-  scale = 1.25
+  scale = 1.0
   window = [ordered]@{ w = 320; h = 280 }
   animations = $animations
   logicalMap = [ordered]@{
