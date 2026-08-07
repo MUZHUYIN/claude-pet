@@ -17,7 +17,7 @@ $FRAMES = @{ idle = 8; blink = 4; walk = 8; run = 8; jump = 6; sleep = 6; typing
 $FPS = @{ idle = 8; blink = 4; walk = 10; run = 16; jump = 12; sleep = 4; typing = 12; thinking = 6; happy = 10; cry = 8 }
 # 非循环动画：blink/jump 播完回 idle；happy/cry 播完停在末帧（完成态静态展示）
 $FOLLOWUP_IDLE = @('blink', 'jump')
-$STAY_LAST = @('happy', 'cry')
+# happy/cry 循环播放（完成态持续开心/哭泣，不再停末帧）
 # 观感调慢系数（素材 fps 偏快，×2.5 更柔和自然）
 $SLOWDOWN = 2.5
 # alpha 阈值硬化（实验已证伪：硬化后白框反而更粗，与边缘锐度正相关，非 alpha 根因）。
@@ -168,8 +168,6 @@ for ($i = 0; $i -lt $ANIMS.Count; $i++) {
   if ($FOLLOWUP_IDLE -contains $name) {
     $def.loop = $false
     $def.followUp = 'idle'
-  } elseif ($STAY_LAST -contains $name) {
-    $def.loop = $false
   }
   $animations[$name] = $def
 }
