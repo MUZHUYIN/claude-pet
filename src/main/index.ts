@@ -85,11 +85,16 @@ if (!gotLock) {
       step()
     }
 
+    // 启动重放标志：watcher 首次回调（历史事件重放完成）前，禁止状态机事件显示窗口。
+    // 显示/隐藏只由进程检测（procWatch）驱动——历史事件是"过去的状态"，不是当前活跃信号，
+    // 否则开机后重放 events.jsonl 会把宠物拉出来（直到 9s 后进程检测才隐藏）。
+    let booting = true
+
     // 状态机
     const stateMachine = new PetStateMachine({
       onState: (state, sessionId) => {
         pushState(win, { state, sessionId })
-        if (state !== 'hidden' && !win.isVisible()) showPet()
+        if (!booting && state !== 'hidden' && !win.isVisible()) showPet()
       },
       onBubble: (text, kind, ttlMs) => {
         console.log(`[pet:main] bubble -> ${kind}: ${text.slice(0, 30)}`)
@@ -101,11 +106,14 @@ if (!gotLock) {
     // 事件文件 watcher
     const watcher = new EventWatcher((lines) => {
       for (const ev of lines) stateMachine.handleEvent(ev)
+      // 首次回调 = 历史重放完成；此后的回调都是新事件
+      booting = false
     })
     watcher.start()
 
-    // 进程检测（显示/隐藏）
-    const procWatch = new ProcessWatcher(() => stateMachine.lastEventTs)
+    // 进程检测（显示/隐藏）——唯一驱动窗口显示的因素
+    // booting 期间事件新鲜度兜底返回 null：重放的历史 ts 不参与活跃判定
+    const procWatch = new ProcessWatcher(() => (booting ? null : stateMachine.lastEventTs))
     procWatch.onChanged = (active) => {
       if (active) {
         stateMachine.sessionBack()
@@ -120,6 +128,8 @@ if (!gotLock) {
     // dev 调试后门：PET_SHOT=1 时按时间序列注入模拟事件并截屏到 dev-shots/
     // 用法: PET_SHOT=1 npm run dev；后续替换 Aseprite 资产后同样用此方式做视觉回归
     if (process.env.PET_SHOT === '1') {
+      booting = false
+      showPet()
       void devScreenshotMode(win, stateMachine)
     }
   })
