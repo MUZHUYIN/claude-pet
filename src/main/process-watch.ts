@@ -15,8 +15,11 @@ const POLL_MS = 3000
 const MISS_LIMIT = 3
 const EVENT_FRESH_MS = 30_000
 
+// 只匹配 npm 全局安装的 claude-code 包（node 直跑 cli.js 的旧安装方式）。
+// 不能用宽松的 -match 'claude'：会误匹配命令行含 "claude" 子串的任意 node 进程
+//（如本项目路径 claude-code_test\、PM2 应用 weixin-claude 等）→ 宠物误显示。
 const PS_QUERY =
-  "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'claude' } | Select-Object -First 1"
+  "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match '@anthropic-ai[/\\\\]claude-code' } | Select-Object -First 1"
 
 export class ProcessWatcher {
   private active = false
@@ -26,7 +29,10 @@ export class ProcessWatcher {
   /** 显示/隐藏状态变化回调 */
   onChanged: ((active: boolean) => void) | null = null
 
-  constructor(private lastEventTs: () => number | null) {}
+  constructor(
+    private lastEventTs: () => number | null,
+    private log: (msg: string) => void
+  ) {}
 
   get isActive(): boolean {
     return this.active
@@ -50,12 +56,14 @@ export class ProcessWatcher {
       this.misses = 0
       if (!this.active) {
         this.active = true
+        this.log('[watch] 检测到 claude → 显示宠物')
         this.onChanged?.(true)
       }
     } else {
       this.misses++
       if (this.active && this.misses >= MISS_LIMIT) {
         this.active = false
+        this.log(`[watch] 连续 ${MISS_LIMIT} 轮无 claude → 隐藏宠物`)
         this.onChanged?.(false)
       }
     }
@@ -64,7 +72,10 @@ export class ProcessWatcher {
   private async detect(): Promise<boolean> {
     // 兜底信号：事件新鲜度（进程检测盲区覆盖：终端包装进程、无进程名的场景）
     const lastTs = this.lastEventTs()
-    if (lastTs !== null && Date.now() - lastTs < EVENT_FRESH_MS) return true
+    if (lastTs !== null && Date.now() - lastTs < EVENT_FRESH_MS) {
+      this.log(`[watch] 判活跃: 事件新鲜度（${Math.round((Date.now() - lastTs) / 1000)}s 前）`)
+      return true
+    }
 
     // 快速路径：tasklist 查 claude.exe（无匹配时 tasklist 仍返回 0，
     // 且中文 locale 的提示文案是本地化的，所以只判 CSV 行内 ASCII 映像名）
@@ -73,18 +84,24 @@ export class ProcessWatcher {
         windowsHide: true,
         maxBuffer: 1 << 20
       })
-      if (stdout.includes('claude.exe')) return true
+      if (stdout.includes('claude.exe')) {
+        this.log('[watch] 判活跃: tasklist 找到 claude.exe')
+        return true
+      }
     } catch {
       // tasklist 失败不阻断，继续查 node 路径
     }
 
-    // node 路径：npm 全局安装的 claude 以 node.exe 运行，必须过滤命令行防误报
+    // node 路径：npm 全局安装的 claude 以 node.exe 运行，必须精确匹配包路径防误报
     try {
       const { stdout } = await execFileP('powershell', ['-NoProfile', '-Command', PS_QUERY], {
         windowsHide: true,
         maxBuffer: 1 << 20
       })
-      if (stdout.trim().length > 0) return true
+      if (stdout.trim().length > 0) {
+        this.log('[watch] 判活跃: node 进程匹配 claude-code 包')
+        return true
+      }
     } catch {
       // 忽略
     }

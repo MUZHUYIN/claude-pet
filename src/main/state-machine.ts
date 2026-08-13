@@ -44,7 +44,12 @@ export class PetStateMachine {
     return this.lastActivityTs
   }
 
-  handleEvent(ev: EventLine): void {
+  /**
+   * @param replay 历史重放（watcher 首次回调）：只恢复状态，不武装时间链定时器。
+   *   否则历史 Stop/Notification 武装的 60s 定时器会在重放结束后触发状态切换，
+   *   经 onState 绕过 booting 抑制把宠物显示出来（开机后宠物被历史事件拉出）。
+   */
+  handleEvent(ev: EventLine, replay = false): void {
     if (ev.session_id && ev.session_id !== this.lastSessionId) {
       this.lastSessionId = ev.session_id
       this.cb.onClearBubble()
@@ -69,10 +74,12 @@ export class PetStateMachine {
         // 按剩余时间重建时间链，保证展示满 1 分钟再转 thinking。
         if ((this.state === 'celebrate' || this.state === 'sad') && isWaitInput && this.postStopAt !== null) {
           this.cb.onBubble(ev.summary || '需要你的注意', 'info', 8000)
-          this.idleTimer = setTimeout(() => {
-            this.set('waiting')
-            this.armWaitIdleTimer()
-          }, Math.max(0, 60_000 - (Date.now() - this.postStopAt)))
+          if (!replay) {
+            this.idleTimer = setTimeout(() => {
+              this.set('waiting')
+              this.armWaitIdleTimer()
+            }, Math.max(0, 60_000 - (Date.now() - this.postStopAt)))
+          }
           break
         }
         this.set('waiting')
@@ -82,7 +89,7 @@ export class PetStateMachine {
         //   其他（"needs your permission" 等权限/决策等待）→ 一直 thinking 等用户选择，
         //     并清掉 celebrate 时间链可能残留的"回 idle"定时器
         if (isWaitInput) {
-          this.armWaitIdleTimer()
+          if (!replay) this.armWaitIdleTimer()
         } else {
           clearTimeout(this.idleTimer)
           this.idleTimer = undefined
@@ -102,7 +109,8 @@ export class PetStateMachine {
         // 展示保持时间链（成功/失败对称）：happy/cry 保持 60s → 自动转 waiting（thinking）
         // 等输入 → 再 60s 无输入回 idle。期间任何新事件（新任务/Notification）都会在
         // handleEvent 顶部清掉此定时器；普通等待通知走上方展示保持保护，按剩余时间重建。
-        this.armPostStopTimer()
+        // 历史重放不武装：重放结束后定时器触发会绕过 booting 抑制把宠物显示出来。
+        if (!replay) this.armPostStopTimer()
         break
       default:
         return

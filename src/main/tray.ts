@@ -15,7 +15,7 @@ export function createTray(win: BrowserWindow): Tray | null {
     tray.setToolTip('Claude Pet')
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: '显示宠物', click: () => win.show() },
+        { label: '显示宠物', click: () => { console.log('[pet:main] tray 显示宠物'); win.show() } },
         { type: 'separator' },
         { label: '退出宠物', click: () => app.quit() }
       ])

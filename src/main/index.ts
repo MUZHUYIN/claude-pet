@@ -45,6 +45,7 @@ if (!gotLock) {
   app.on('second-instance', () => {
     const win = getPetWindow()
     if (win) {
+      diag('[show] second-instance（二次启动触发显示）')
       if (win.isMinimized()) win.restore()
       win.show()
       win.focus()
@@ -70,9 +71,10 @@ if (!gotLock) {
     startHitTestLoop()
     createTray(win)
 
-    // 显示/隐藏（200ms 淡入）
-    const showPet = (): void => {
+    // 显示/隐藏（200ms 淡入）；reason 记录显示来源（diag 排查误显示）
+    const showPet = (reason: string): void => {
       if (win.isVisible()) return
+      diag(`[show] ${reason}`)
       win.setOpacity(0)
       win.show()
       const t0 = Date.now()
@@ -94,7 +96,7 @@ if (!gotLock) {
     const stateMachine = new PetStateMachine({
       onState: (state, sessionId) => {
         pushState(win, { state, sessionId })
-        if (!booting && state !== 'hidden' && !win.isVisible()) showPet()
+        if (!booting && state !== 'hidden' && !win.isVisible()) showPet(`onState:${state}`)
       },
       onBubble: (text, kind, ttlMs) => {
         console.log(`[pet:main] bubble -> ${kind}: ${text.slice(0, 30)}`)
@@ -105,7 +107,8 @@ if (!gotLock) {
 
     // 事件文件 watcher
     const watcher = new EventWatcher((lines) => {
-      for (const ev of lines) stateMachine.handleEvent(ev)
+      const isReplay = booting // 首次回调 = 历史重放
+      for (const ev of lines) stateMachine.handleEvent(ev, isReplay)
       // 首次回调 = 历史重放完成；此后的回调都是新事件
       booting = false
     })
@@ -113,14 +116,20 @@ if (!gotLock) {
 
     // 进程检测（显示/隐藏）——唯一驱动窗口显示的因素
     // booting 期间事件新鲜度兜底返回 null：重放的历史 ts 不参与活跃判定
-    const procWatch = new ProcessWatcher(() => (booting ? null : stateMachine.lastEventTs))
+    const procWatch = new ProcessWatcher(
+      () => (booting ? null : stateMachine.lastEventTs),
+      (msg) => diag(msg)
+    )
     procWatch.onChanged = (active) => {
       if (active) {
         stateMachine.sessionBack()
-        if (!win.isVisible()) showPet()
+        if (!win.isVisible()) showPet('procWatch')
       } else {
         stateMachine.sessionGone()
-        if (win.isVisible()) win.hide()
+        if (win.isVisible()) {
+          diag('[hide] procWatch 判定无 claude')
+          win.hide()
+        }
       }
     }
     procWatch.start()
@@ -129,7 +138,7 @@ if (!gotLock) {
     // 用法: PET_SHOT=1 npm run dev；后续替换 Aseprite 资产后同样用此方式做视觉回归
     if (process.env.PET_SHOT === '1') {
       booting = false
-      showPet()
+      showPet('PET_SHOT')
       void devScreenshotMode(win, stateMachine)
     }
   })

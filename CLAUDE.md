@@ -50,7 +50,8 @@ IPC 'pet:event' 推送 ──► 渲染进程（Canvas 帧动画 + DOM 气泡 + 
   - **等待时间链**：Notification 区分类型——summary 含 `waiting for your input`（普通等待输入）→ thinking 60s 后回 idle；权限/决策等待（`needs your permission` 等）→ 一直保持 thinking 等用户选择（并清掉时间链残留定时器）
   - PostToolUse/UserPromptSubmit → working（并清掉旧结果气泡）（ttl≤0 = 永久，新任务开始时清除，点击可关闭）
   - 进程消失（连续 3 轮 ≈9s）→ hidden；进程活跃 → idle
-  - **窗口显示只由进程检测驱动**：启动时 watcher 重放 events.jsonl 历史事件属"过去的状态"，booting 抑制期（首次回调前）不触发显示、事件新鲜度兜底返回 null——否则开机后宠物会被历史事件拉出来（直到 9s 后才隐藏）
+  - **窗口显示只由进程检测驱动**：启动时 watcher 重放 events.jsonl 历史事件属"过去的状态"。两层防护缺一不可：①booting 抑制期（首次回调前）onState 不触发显示、事件新鲜度兜底返回 null；②**历史重放不武装时间链定时器**（`handleEvent(ev, replay)` 跳过 Stop/Notification 的 60s 定时器）——否则重放武装的定时器在 booting 结束后触发状态切换，绕过抑制把宠物拉出来（已踩坑：开机 60s 后 `[show] onState:waiting`，直到打开 claude 都不隐藏）
+  - **diag.log 时间戳是 UTC**（`toISOString()`），比本地时间慢 8 小时——排查开机时序时先换算，否则跨天条目无法对齐
   - 定时器：`state-machine.ts` 的 `idleTimer`（waiting 回 idle + celebrate 转 waiting 共用），任何新事件/`sessionGone` 都会 clearTimeout
 - **行为层 `src/renderer/behaviors.ts`**：逻辑状态之外的动画增强——idle 随机 blink（5-15s）、idle 5 分钟 sleep、拖拽中 walk、拖拽释放 run 1.5s、戳一下 jump。全部经 `pet.hasAnimation()` 守卫（形象缺动画时自动降级）
 - 精灵动画经 `logicalMap` 映射（如 bear-original：working→typing、waiting→thinking、celebrate→happy、sad→cry）；**happy/cry 循环播放**（完成态持续开心/哭泣），仅 blink/jump 是 `loop=false` + `followUp=idle`（播完回 idle）
