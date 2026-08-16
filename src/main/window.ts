@@ -23,7 +23,7 @@ function activeCharacter(): string {
   } catch {
     /* 读取失败用默认 */
   }
-  return 'bear-v3'
+  return 'bear-original'
 }
 
 /** characters/ 基础目录 */
@@ -71,7 +71,7 @@ function listCharacters(): string[] {
       .filter((d) => d.isDirectory())
       .map((d) => d.name)
   } catch {
-    return ['bear-v3']
+    return ['bear-original']
   }
 }
 
